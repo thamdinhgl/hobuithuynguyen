@@ -3,61 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gia phả Họ Bùi - Thủy Nguyên</title>
+    <title>Gia Phả Họ Bùi Thủy Nguyên</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         #tree-container { 
-            width: 100%; height: 850px; background: #fdfbf7; 
+            width: 100%; height: 85vh; background: #fdfbf7; 
             border-radius: 20px; border: 2px solid #d4d4d8;
             cursor: grab; overflow: hidden; position: relative;
         }
         .node rect { stroke-width: 2.5px; rx: 12; cursor: pointer; transition: all 0.3s; }
         .node text { font-size: 12px; font-weight: 800; pointer-events: none; }
         .link { fill: none; stroke: #713f12; stroke-width: 2.5px; opacity: 0.3; }
-        
         .toggle-btn circle { fill: #444; stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
         .toggle-btn text { fill: #fff; font-size: 14px; font-weight: bold; pointer-events: none; text-anchor: middle; }
-        
         .tree-bg-image {
             position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
             width: 80%; height: 80%; object-fit: contain; opacity: 0.08; pointer-events: none; z-index: 0;
         }
-
         .tooltip { 
             position: absolute; padding: 12px; background: white; border-radius: 12px; 
             pointer-events: none; opacity: 0; box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
             z-index: 2000; min-width: 180px; border: 2px solid #713f12;
         }
-        .controls { position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; gap: 8px; }
+        .controls { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; gap: 8px; }
     </style>
 </head>
 <body class="bg-stone-100">
 
     <nav class="bg-stone-800 text-white p-4 shadow-xl sticky top-0 z-50">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <span class="text-2xl">🌳</span>
-                <h1 class="text-xl font-bold uppercase tracking-widest text-orange-200">Gia phả Họ Bùi - Thủy Nguyên</h1>
+        <div class="container mx-auto flex justify-between items-center px-2">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🌳</span>
+                <h1 class="text-sm md:text-xl font-bold uppercase tracking-widest text-orange-200">Gia Phả Họ Bùi Thủy Nguyên</h1>
             </div>
             <div id="status-container" class="flex items-center gap-2">
-                <span id="status-text" class="text-xs bg-stone-700 px-3 py-1 rounded-full font-bold text-stone-300">Đang chờ dữ liệu...</span>
+                <span id="status-text" class="text-[10px] md:text-xs bg-stone-700 px-2 py-1 rounded-full font-bold text-stone-300 italic text-center">Đang nạp dữ liệu...</span>
                 <input type="file" id="manual-upload" accept=".xlsx" class="hidden">
-                <label for="manual-upload" id="upload-label" class="text-xs bg-orange-200 text-stone-900 px-3 py-1 rounded-full font-bold cursor-pointer hover:bg-orange-300">Nạp File Excel</label>
+                <label for="manual-upload" id="upload-label" class="text-[10px] md:text-xs bg-orange-200 text-stone-900 px-2 py-1 rounded-full font-bold cursor-pointer hover:bg-orange-300">Nạp File</label>
             </div>
         </div>
     </nav>
 
-    <div class="container mx-auto p-4">
-        <div class="bg-white p-3 rounded-2xl shadow-2xl relative">
-            <div class="controls">
-                <button onclick="changeOrientation('vertical')" id="btn-vertical" class="bg-stone-800 text-white px-4 py-2 rounded-lg shadow-md hover:bg-stone-700 font-bold text-sm transition flex items-center gap-2 border-2 border-orange-200">
-                    ⬆️ Chiều dọc
-                </button>
-                <button onclick="changeOrientation('horizontal')" id="btn-horizontal" class="bg-white text-stone-800 px-4 py-2 rounded-lg shadow-md hover:bg-stone-50 font-bold text-sm transition flex items-center gap-2 border-2 border-stone-200">
-                    ➡️ Chiều ngang
-                </button>
+    <div class="container mx-auto p-2 md:p-4">
+        <div class="bg-white p-2 md:p-3 rounded-2xl shadow-2xl relative">
+            <div class="controls scale-90 md:scale-100">
+                <button onclick="changeOrientation('vertical')" id="btn-vertical" class="bg-white text-stone-800 px-3 py-2 rounded-lg shadow-md font-bold text-xs transition border-2 border-stone-200">⬇️ Dọc</button>
+                <button onclick="changeOrientation('horizontal')" id="btn-horizontal" class="bg-white text-stone-800 px-3 py-2 rounded-lg shadow-md font-bold text-xs transition border-2 border-stone-200">➡️ Ngang</button>
             </div>
 
             <div id="tree-container">
@@ -69,24 +62,31 @@
 
     <script>
         let root, svg, g, treeLayout;
-        let orientation = 'vertical'; // Mặc định chiều dọc
+        let orientation = 'vertical'; 
 
         const generationColors = [
-            { bg: "#713f12", text: "#ffffff", border: "#45270a" }, // Đời 1
-            { bg: "#92400e", text: "#ffffff", border: "#713f12" }, // Đời 2
-            { bg: "#166534", text: "#ffffff", border: "#14532d" }, // Đời 3
-            { bg: "#15803d", text: "#ffffff", border: "#166534" }, // Đời 4
-            { bg: "#22c55e", text: "#064e3b", border: "#15803d" }, // Đời 5
-            { bg: "#86efac", text: "#064e3b", border: "#22c55e" }, // Đời 6
-            { bg: "#f0fdf4", text: "#166534", border: "#86efac" }  // Đời 7+
+            { bg: "#713f12", text: "#ffffff", border: "#45270a" },
+            { bg: "#92400e", text: "#ffffff", border: "#713f12" },
+            { bg: "#166534", text: "#ffffff", border: "#14532d" },
+            { bg: "#15803d", text: "#ffffff", border: "#166534" },
+            { bg: "#22c55e", text: "#064e3b", border: "#15803d" },
+            { bg: "#86efac", text: "#064e3b", border: "#22c55e" },
+            { bg: "#f0fdf4", text: "#166534", border: "#86efac" }
         ];
 
         window.addEventListener('DOMContentLoaded', () => {
+            // TỰ ĐỘNG KIỂM TRA MÀN HÌNH ĐỂ CHỌN CHIỀU
+            if (window.innerWidth < 768) {
+                orientation = 'horizontal'; // Điện thoại mặc định ngang
+            } else {
+                orientation = 'vertical'; // Máy tính mặc định dọc
+            }
+            
             fetch('giapha.xlsx')
                 .then(res => res.arrayBuffer())
                 .then(buffer => processExcel(buffer))
                 .catch(() => {
-                    document.getElementById('status-text').innerText = "Cần nạp file giapha.xlsx";
+                    document.getElementById('status-text').innerText = "Vui lòng chọn file giapha.xlsx";
                 });
         });
 
@@ -112,8 +112,8 @@
                 else if (id && dataMap[pid]) dataMap[pid].children.push(dataMap[id]);
             });
             if (treeData) {
-                document.getElementById('status-text').innerText = "Chủ hộ: " + treeData.Name;
-                document.getElementById('status-text').className = "text-xs bg-green-700 px-3 py-1 rounded-full font-bold text-white";
+                document.getElementById('status-text').innerText = "Thành viên: " + treeData.Name;
+                document.getElementById('status-text').className = "text-[10px] md:text-xs bg-green-700 px-3 py-1 rounded-full font-bold text-white";
                 initTree(treeData);
             }
         }
@@ -122,9 +122,9 @@
             const container = d3.select("#tree-container");
             container.selectAll("svg").remove();
             const width = document.getElementById("tree-container").offsetWidth;
-            const height = 850;
+            const height = document.getElementById("tree-container").offsetHeight;
             
-            svg = container.append("svg").attr("width", "100%").attr("height", height)
+            svg = container.append("svg").attr("width", "100%").attr("height", "100%")
                 .call(d3.zoom().scaleExtent([0.05, 3]).on("zoom", (e) => g.attr("transform", e.transform)))
                 .append("g");
 
@@ -142,18 +142,6 @@
 
         function changeOrientation(newOrientation) {
             orientation = newOrientation;
-            
-            // Cập nhật giao diện nút
-            const btnV = document.getElementById('btn-vertical');
-            const btnH = document.getElementById('btn-horizontal');
-            if(orientation === 'vertical') {
-                btnV.className = btnV.className.replace('bg-white text-stone-800 border-stone-200', 'bg-stone-800 text-white border-orange-200');
-                btnH.className = btnH.className.replace('bg-stone-800 text-white border-orange-200', 'bg-white text-stone-800 border-stone-200');
-            } else {
-                btnH.className = btnH.className.replace('bg-white text-stone-800 border-stone-200', 'bg-stone-800 text-white border-orange-200');
-                btnV.className = btnV.className.replace('bg-stone-800 text-white border-orange-200', 'bg-white text-stone-800 border-stone-200');
-            }
-            
             update(root);
         }
 
@@ -169,23 +157,27 @@
 
         function update(source) {
             const width = document.getElementById("tree-container").offsetWidth;
-            const height = 850;
+            const height = document.getElementById("tree-container").offsetHeight;
             const isV = orientation === 'vertical';
 
-            // Cấu hình kích thước node phụ thuộc vào hướng
-            treeLayout = d3.tree().nodeSize(isV ? [160, 140] : [140, 200]);
+            // Cập nhật trạng thái nút bấm
+            document.getElementById('btn-vertical').style.background = isV ? '#292524' : '#fff';
+            document.getElementById('btn-vertical').style.color = isV ? '#fff' : '#292524';
+            document.getElementById('btn-horizontal').style.background = !isV ? '#292524' : '#fff';
+            document.getElementById('btn-horizontal').style.color = !isV ? '#fff' : '#292524';
+
+            treeLayout = d3.tree().nodeSize(isV ? [160, 140] : [120, 220]);
             const treeData = treeLayout(root);
             const nodes = treeData.descendants();
             
-            // Tính toán vị trí node
             nodes.forEach(d => {
-                if(isV) d.y = -(d.depth * 140); // Lên trên
-                else d.y = d.depth * 200; // Sang phải
+                if(isV) d.y = -(d.depth * 140);
+                else d.y = d.depth * 220;
             });
 
             // Vị trí gốc ban đầu
             if(isV) g.transition().duration(750).attr("transform", `translate(${width/2}, ${height - 100})`);
-            else g.transition().duration(750).attr("transform", `translate(100, ${height/2})`);
+            else g.transition().duration(750).attr("transform", `translate(80, ${height/2})`);
 
             const link = g.selectAll(".link").data(treeData.links(), d => d.target.id);
             const linkPath = isV ? d3.linkVertical() : d3.linkHorizontal();
@@ -199,10 +191,7 @@
             const nodeEnter = node.enter().append("g").attr("class", "node")
                 .attr("transform", d => `translate(${isV ? source.x0 : source.y0},${isV ? source.y0 : source.x0})`);
 
-            nodeEnter.append("rect")
-                .attr("width", 130).attr("height", 36).attr("x", -65).attr("y", -18)
-                .on("click", toggle);
-
+            nodeEnter.append("rect").attr("width", 130).attr("height", 36).attr("x", -65).attr("y", -18).on("click", toggle);
             nodeEnter.append("text").attr("dy", ".35em").attr("text-anchor", "middle");
 
             const btn = nodeEnter.append("g").attr("class", "toggle-btn").on("click", toggle);
@@ -213,7 +202,6 @@
             nodeUpdate.transition().duration(750)
                 .attr("transform", d => `translate(${isV ? d.x : d.y},${isV ? d.y : d.x})`);
 
-            // Cập nhật màu sắc và nội dung
             nodeUpdate.select("rect")
                 .style("fill", d => getColor(d.depth).bg)
                 .style("stroke", d => getColor(d.depth).border);
@@ -235,11 +223,11 @@
             nodeUpdate.on("mouseover", (event, d) => {
                 const colors = getColor(d.depth);
                 d3.select("#tooltip").style("opacity", 1)
-                    .html(`<div class="font-bold border-b pb-1 mb-1 text-sm" style="color:${colors.bg}">🌳 ${d.data.Name}</div>
-                           <div class="text-[11px]"><b>Đời thứ:</b> ${d.data.Generation}</div>
-                           <div class="text-[11px] font-bold text-blue-800">SĐT: ${d.data.Phone || "---"}</div>
-<div class="text-[11px] font-bold text-blue-800">${d.data.Note || "---"}</div>`)
-                    .style("left", (event.pageX + 15) + "px")
+                    .html(`<div class="font-bold border-b pb-1 mb-1 text-sm" style="color:${colors.bg}">${d.data.Name}</div>
+                           <div class="text-[11px]"><b>Đời:</b> ${d.data.Generation}</div>
+                           <div class="text-[11px] font-bold text-blue-800 uppercase mt-1">SĐT: ${d.data.Phone || "---"}</div>
+<div class="text-[11px] font-bold text-blue-800 uppercase mt-1">Ghi chú: ${d.data.Note || "---"}</div>`)
+                    .style("left", (event.pageX + 10) + "px")
                     .style("top", (event.pageY - 20) + "px");
             }).on("mouseout", () => d3.select("#tooltip").style("opacity", 0));
         }

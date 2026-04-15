@@ -3,44 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gia Phả Họ Bùi - Thủy Nguyên </title>
+    <title>Gia Phả Họ Bùi - Thủy Nguyên</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         #tree-container { 
-            width: 100%; height: 85vh; background-image: url('https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEi_2vGSGtW73AXmAM11tsfSAhYCn-mBKnQU5blub1IpoiWZ5gOlDwc2LtKrOFjHMg6Cv5hIPys53FCCrlBW5nNUXgR6_YBPbQCG1xC0oTDuHJz0tJjNNchkOozvAaSPWdjE9CG-p06tp04/s1600/nengiaphavang.jpg');
-            background-size: cover; background-position: center; border-radius: 20px; border: 2px solid #d4d4d8; position: relative; overflow: hidden;
+            width: 100%; height: 85vh; 
+            background-image: url('https://img.pikbest.com/backgrounds/20220119/fresh-watercolor-landscape-background-design-vector_6234327.jpg!bw700');
+            background-size: cover; background-position: center; border-radius: 20px; 
+            border: 2px solid #d4d4d8; cursor: grab; overflow: hidden; position: relative;
         }
-        #tree-container::before { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); z-index: 1; }
-        #tree-container svg { position: relative; z-index: 2; cursor: grab; }
-        .node rect { stroke-width: 2.5px; rx: 12; cursor: pointer; }
+        #tree-container::before {
+            content: ''; position: absolute; inset: 0;
+            background-color: rgba(255, 255, 255, 0.85); z-index: 1; pointer-events: none;
+        }
+        #tree-container svg { position: relative; z-index: 2; }
+        .node rect { stroke-width: 2.5px; rx: 12; cursor: pointer; transition: all 0.3s; }
         .name-txt { font-size: 14px; font-weight: 800; }
         .info-txt { font-size: 10.5px; font-weight: 600; }
-        .note-txt { font-size: 9px; font-weight: 500; font-style: italic; }
-        .link { fill: none; stroke: #5d4037; stroke-width: 2.5px; opacity: 0.4; }
+        .note-txt { font-size: 9.5px; font-weight: 500; font-style: italic; }
+        .link { fill: none; stroke: #713f12; stroke-width: 2.5px; opacity: 0.3; }
         .toggle-btn circle { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
         .toggle-btn text { fill: #fff; font-size: 14px; font-weight: bold; pointer-events: none; text-anchor: middle; }
+        .controls { position: absolute; top: 15px; right: 15px; z-index: 100; display: flex; gap: 8px; }
+        .tooltip { 
+            position: absolute; padding: 12px; background: white; border-radius: 12px; 
+            pointer-events: none; opacity: 0; box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
+            z-index: 2000; min-width: 180px; border: 2px solid #713f12;
+        }
     </style>
 </head>
 <body class="bg-stone-100 font-sans">
 
     <nav class="bg-stone-800 text-white p-4 shadow-xl sticky top-0 z-50">
-        <div class="container mx-auto flex justify-between items-center px-4">
-            <h1 class="text-xl font-bold uppercase tracking-widest text-orange-200">Gia Phả Họ Bùi - Thủy Nguyên</h1>
-            <label for="manual-upload" class="text-xs bg-orange-200 text-stone-900 px-4 py-2 rounded-full font-bold cursor-pointer hover:bg-orange-300 transition">NẠP FILE EXCEL</label>
-            <input type="file" id="manual-upload" accept=".xlsx" class="hidden">
+        <div class="container mx-auto flex justify-between items-center px-2">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🌳</span>
+                <h1 class="text-sm md:text-xl font-bold uppercase text-orange-200">Gia Phả Họ Bùi - Thủy Nguyên</h1>
+            </div>
+            <div id="status-container" class="flex items-center gap-2">
+                <span id="status-text" class="text-[10px] md:text-xs bg-stone-700 px-3 py-1 rounded-full italic">Đang tải...</span>
+                <label for="manual-upload" class="text-[10px] md:text-xs bg-orange-200 text-stone-900 px-3 py-1 rounded-full font-bold cursor-pointer hover:bg-orange-300 transition shadow-lg">NẠP FILE</label>
+                <input type="file" id="manual-upload" accept=".xlsx" class="hidden">
+            </div>
         </div>
     </nav>
 
-    <div class="container mx-auto p-4">
-        <div class="bg-white p-3 rounded-2xl shadow-2xl relative border border-stone-200">
+    <div class="container mx-auto p-2 md:p-4">
+        <div class="bg-white p-2 md:p-3 rounded-2xl shadow-2xl relative border border-stone-200">
+            <div class="controls scale-90 md:scale-100">
+                <button onclick="changeOrientation('vertical')" id="btn-vertical" class="bg-stone-800 text-white px-3 py-2 rounded-lg shadow-md font-bold text-xs border-2 border-stone-200 transition">⬇️ Dọc</button>
+                <button onclick="changeOrientation('horizontal')" id="btn-horizontal" class="bg-white text-stone-800 px-3 py-2 rounded-lg shadow-md font-bold text-xs border-2 border-stone-200 transition">➡️ Ngang</button>
+            </div>
             <div id="tree-container"></div>
+            <div id="tooltip" class="tooltip"></div>
         </div>
     </div>
 
     <script>
-        let root, svg, g;
+        let root, svg, g, treeLayout;
+        // TỰ ĐỘNG CHỌN HƯỚNG: PC -> Dọc, Mobile -> Ngang
+        let orientation = window.innerWidth < 768 ? 'horizontal' : 'vertical';
+
         const genColors = [
             { bg: "#45270a", txt: "#ffffff", bd: "#2d1a07" },
             { bg: "#713f12", txt: "#ffffff", bd: "#5d3510" },
@@ -51,48 +76,56 @@
             { bg: "#f0fdf4", txt: "#166534", bd: "#bbf7d0" }
         ];
 
-        // --- HÀM XỬ LÝ NGÀY THÁNG ĐẶC TRỊ LỆCH 1 NGÀY ---
+        // HÀM XỬ LÝ NGÀY THÁNG KHÔNG LỆCH (DÙNG SSF GỐC)
         function parseExcelDate(val) {
             if (!val) return "";
-            
-            // Nếu là dạng số Serial (Excel hay trả về dạng này)
             if (typeof val === 'number') {
-                // Sử dụng hàm nội bộ của thư viện XLSX để chuyển đổi chính xác không lệch múi giờ
                 let dateObj = XLSX.SSF.parse_date_code(val);
                 let d = dateObj.d, m = dateObj.m, y = dateObj.y;
-                
-                // Nếu là ngày đầu năm mặc định, chỉ hiện năm
                 if (d === 1 && m === 1) return y.toString();
                 return `${d < 10 ? '0'+d : d}/${m < 10 ? '0'+m : m}/${y}`;
             } 
-            
-            // Nếu là Date Object
             if (val instanceof Date) {
-                // Ép về múi giờ UTC để tránh lệch ngày do múi giờ địa phương
-                const d = val.getUTCDate();
-                const m = val.getUTCMonth() + 1;
-                const y = val.getUTCFullYear();
+                const d = val.getUTCDate(), m = val.getUTCMonth() + 1, y = val.getUTCFullYear();
                 if (d === 1 && m === 1) return y.toString();
                 return `${d < 10 ? '0'+d : d}/${m < 10 ? '0'+m : m}/${y}`;
             }
-
-            // Nếu là String (chuỗi nhập tay)
             let str = String(val).trim();
             if (str.includes('/')) {
                 let parts = str.split('/');
                 if (parts.length === 3) {
-                    let d = parts[0].padStart(2, '0');
-                    let m = parts[1].padStart(2, '0');
-                    let y = parts[2];
-                    if (d === "01" && m === "01") return y;
-                    return `${d}/${m}/${y}`;
+                    let d = parts[0].padStart(2, '0'), m = parts[1].padStart(2, '0'), y = parts[2];
+                    return (d === "01" && m === "01") ? y : `${d}/${m}/${y}`;
                 }
             }
             return str;
         }
 
+        // HÀM XUỐNG DÒNG CHUẨN TRỌNG TÂM
+        function wrapNote(text, width) {
+            text.each(function() {
+                let textNode = d3.select(this),
+                    words = textNode.text().split(/\s+/).reverse(),
+                    word, line = [], lineNumber = 0, lineHeight = 1.1,
+                    x = textNode.attr("x"), y = textNode.attr("y"),
+                    tspan = textNode.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", "0.3em");
+                while (word = words.pop()) {
+                    line.push(word);
+                    tspan.text(line.join(" "));
+                    if (tspan.node().getComputedTextLength() > width) {
+                        line.pop(); tspan.text(line.join(" "));
+                        line = [word];
+                        tspan = textNode.append("tspan").attr("x", x).attr("y", y).attr("dy", lineHeight + "em").text(word);
+                        lineNumber++;
+                    }
+                }
+                if (lineNumber > 0) textNode.attr("y", parseFloat(y) - (lineNumber * 4));
+            });
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
-            fetch('giapha.xlsx').then(res => res.arrayBuffer()).then(buffer => processExcel(buffer)).catch(() => {});
+            fetch('giapha.xlsx').then(res => res.arrayBuffer()).then(buffer => processExcel(buffer))
+            .catch(() => { document.getElementById('status-text').innerText = "Hãy nạp file Excel"; });
         });
 
         document.getElementById('manual-upload').onchange = (e) => {
@@ -102,126 +135,100 @@
         };
 
         function processExcel(buffer) {
-            // Tắt cellDates để lấy con số serial gốc, tránh JS tự suy diễn múi giờ
             const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
             const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            
             const dataMap = {};
-            rows.forEach(r => {
-                const id = String(r.ID || "").trim();
-                if(id) dataMap[id] = { ...r, id, children: [] };
-            });
-
+            rows.forEach(r => { const id = String(r.ID || "").trim(); if(id) dataMap[id] = { ...r, id, children: [] }; });
             let treeData = null;
             rows.forEach(r => {
-                const id = String(r.ID || "").trim();
-                const pid = String(r.ParentID || "").trim();
+                const id = String(r.ID || "").trim(), pid = String(r.ParentID || "").trim();
                 if (id && (pid === "0" || pid === "" || !dataMap[pid])) treeData = dataMap[id];
                 else if (id && dataMap[pid]) dataMap[pid].children.push(dataMap[id]);
             });
-
-            if (treeData) initTree(treeData);
-        }
-
-        function wrapNote(text, width) {
-            text.each(function() {
-                let textNode = d3.select(this),
-                    words = textNode.text().split(/\s+/).reverse(),
-                    word, line = [], lineNumber = 0, lineHeight = 1.1,
-                    x = textNode.attr("x"),
-                    y = textNode.attr("y"),
-                    tspan = textNode.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", "0.3em");
-                
-                while (word = words.pop()) {
-                    line.push(word);
-                    tspan.text(line.join(" "));
-                    if (tspan.node().getComputedTextLength() > width) {
-                        line.pop();
-                        tspan.text(line.join(" "));
-                        line = [word];
-                        tspan = textNode.append("tspan").attr("x", x).attr("y", y).attr("dy", lineHeight + "em").text(word);
-                        lineNumber++;
-                    }
-                }
-                if (lineNumber > 0) textNode.attr("y", parseFloat(y) - (lineNumber * 2));
-            });
+            if (treeData) {
+                document.getElementById('status-text').innerText = "Đã nạp: " + treeData.Name;
+                initTree(treeData);
+            }
         }
 
         function initTree(treeData) {
             const container = d3.select("#tree-container");
             container.selectAll("svg").remove();
-            const width = container.node().offsetWidth;
-            const height = container.node().offsetHeight;
             svg = container.append("svg").attr("width", "100%").attr("height", "100%")
-                .call(d3.zoom().scaleExtent([0.1, 3]).on("zoom", (e) => g.attr("transform", e.transform)))
+                .call(d3.zoom().scaleExtent([0.05, 3]).on("zoom", (e) => g.attr("transform", e.transform)))
                 .append("g");
-            g = svg.append("g").attr("transform", `translate(${width/2}, ${height - 120})`);
+            g = svg.append("g");
             root = d3.hierarchy(treeData);
             root.descendants().forEach(d => { if (d.depth >= 5 && d.children) { d._children = d.children; d.children = null; } });
             update(root);
         }
 
+        function changeOrientation(newO) { orientation = newO; update(root); }
+        function toggle(event, d) {
+            if (d.children) { d._children = d.children; d.children = null; }
+            else { d.children = d._children; d._children = null; }
+            update(d);
+        }
+
         function update(source) {
-            const treeLayout = d3.tree().nodeSize([230, 270]);
+            const isV = orientation === 'vertical';
+            const width = document.getElementById("tree-container").offsetWidth;
+            const height = document.getElementById("tree-container").offsetHeight;
+
+            // Cập nhật màu nút điều khiển
+            d3.select("#btn-vertical").style("background", isV ? "#292524" : "#fff").style("color", isV ? "#fff" : "#292524");
+            d3.select("#btn-horizontal").style("background", !isV ? "#292524" : "#fff").style("color", !isV ? "#fff" : "#292524");
+
+            treeLayout = d3.tree().nodeSize(isV ? [220, 260] : [140, 300]);
             const treeData = treeLayout(root);
             const nodes = treeData.descendants();
-            nodes.forEach(d => { d.y = -(d.depth * 270); });
+            nodes.forEach(d => { if(isV) d.y = -(d.depth * 260); else d.y = d.depth * 300; });
+
+            if(isV) g.transition().duration(750).attr("transform", `translate(${width/2}, ${height - 100})`);
+            else g.transition().duration(750).attr("transform", `translate(100, ${height/2})`);
 
             const link = g.selectAll(".link").data(treeData.links(), d => d.target.id);
+            const linkPath = isV ? d3.linkVertical() : d3.linkHorizontal();
             link.enter().append("path").attr("class", "link").merge(link).transition().duration(750)
-                .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y));
+                .attr("d", linkPath.x(d => isV ? d.x : d.y).y(d => isV ? d.y : d.x));
             link.exit().remove();
 
             const node = g.selectAll(".node").data(nodes, d => d.data.id);
             const nodeEnter = node.enter().append("g").attr("class", "node")
-                .attr("transform", d => `translate(${source.x0 || 0},${source.y0 || 0})`);
+                .attr("transform", d => `translate(${isV ? (source.x0 || 0) : (source.y0 || 0)},${isV ? (source.y0 || 0) : (source.x0 || 0)})`);
 
-            nodeEnter.append("rect").attr("width", 200).attr("height", 140).attr("x", -100).attr("y", -70)
-                .on("click", (e, d) => { if(d.children || d._children) toggle(e, d); });
-
+            nodeEnter.append("rect").attr("width", 200).attr("height", 140).attr("x", -100).attr("y", -70).on("click", toggle);
             nodeEnter.append("text").attr("class", "name-txt").attr("y", -42).attr("text-anchor", "middle");
             nodeEnter.append("text").attr("class", "info-txt").attr("y", -20).attr("text-anchor", "middle");
             nodeEnter.append("text").attr("class", "info-txt").attr("y", 2).attr("text-anchor", "middle");
             nodeEnter.append("text").attr("class", "info-txt").attr("y", 24).attr("text-anchor", "middle");
-            nodeEnter.append("text").attr("class", "note-txt").attr("x", 0).attr("y", 45).attr("text-anchor", "middle");
+            nodeEnter.append("text").attr("class", "note-txt").attr("x", 0).attr("y", 46).attr("text-anchor", "middle");
 
             const btn = nodeEnter.append("g").attr("class", "toggle-btn").on("click", (e, d) => { e.stopPropagation(); toggle(e, d); });
             btn.append("circle").attr("r", 12);
             btn.append("text").attr("dy", "0.35em");
 
             const nodeUpdate = nodeEnter.merge(node);
-            nodeUpdate.transition().duration(750).attr("transform", d => `translate(${d.x},${d.y})`);
+            nodeUpdate.transition().duration(750).attr("transform", d => `translate(${isV ? d.x : d.y},${isV ? d.y : d.x})`);
 
-            nodeUpdate.select("rect").style("fill", d => genColors[Math.min(d.depth, 6)].bg).style("stroke", d => genColors[Math.min(d.depth, 6)].bd);
-            nodeUpdate.select(".name-txt").text(d => d.data.Name).style("fill", d => genColors[Math.min(d.depth, 6)].txt);
-            nodeUpdate.select("text:nth-of-type(2)").text(d => "Thế hệ: " + (d.data.Generation || "?")).style("fill", d => genColors[Math.min(d.depth, 6)].txt);
-            
+            const getC = (d) => genColors[Math.min(d.depth, 6)];
+            nodeUpdate.select("rect").style("fill", d => getC(d).bg).style("stroke", d => getC(d).bd);
+            nodeUpdate.select(".name-txt").text(d => d.data.Name).style("fill", d => getC(d).txt);
+            nodeUpdate.select("text:nth-of-type(2)").text(d => "Thế hệ: " + (d.data.Generation || "?")).style("fill", d => getC(d).txt);
             nodeUpdate.select("text:nth-of-type(3)").text(d => {
-                let b = parseExcelDate(d.data.Birth);
-                let dd = parseExcelDate(d.data.Death);
-                if (!b && !dd) return "";
-                return `(${b || "?"} - ${dd || "nay"})`;
-            }).style("fill", d => genColors[Math.min(d.depth, 6)].txt);
+                let b = parseExcelDate(d.data.Birth), dd = parseExcelDate(d.data.Death);
+                return (b || dd) ? `(${b || "?"} - ${dd || "nay"})` : "";
+            }).style("fill", d => getC(d).txt);
+            nodeUpdate.select("text:nth-of-type(4)").text(d => d.data.Phone ? "📞 " + d.data.Phone : "").style("fill", d => getC(d).txt);
+            nodeUpdate.select(".note-txt").text(d => d.data.Note ? "📝 " + d.data.Note : "").style("fill", d => getC(d).txt).call(wrapNote, 180);
 
-            nodeUpdate.select("text:nth-of-type(4)").text(d => d.data.Phone ? "📞 " + d.data.Phone : "").style("fill", d => genColors[Math.min(d.depth, 6)].txt);
-            
-            nodeUpdate.select(".note-txt")
-                .text(d => d.data.Note ? "📝 " + d.data.Note : "")
-                .style("fill", d => genColors[Math.min(d.depth, 6)].txt)
-                .call(wrapNote, 180);
-
-            nodeUpdate.select(".toggle-btn").attr("display", d => (d.children || d._children) ? "block" : "none").attr("transform", "translate(0, -70)");
-            nodeUpdate.select(".toggle-btn circle").style("fill", d => genColors[Math.min(d.depth, 6)].bd);
+            nodeUpdate.select(".toggle-btn").attr("display", d => (d.children || d._children) ? "block" : "none")
+                .attr("transform", isV ? "translate(0, -70)" : "translate(100, 0)");
+            nodeUpdate.select(".toggle-btn circle").style("fill", d => getC(d).bd);
             nodeUpdate.select(".toggle-btn text").text(d => d.children ? "-" : "+");
 
             node.exit().remove();
             nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
-        }
-
-        function toggle(e, d) { 
-            if (d.children) { d._children = d.children; d.children = null; } 
-            else { d.children = d._children; d._children = null; } 
-            update(d); 
         }
     </script>
 </body>
